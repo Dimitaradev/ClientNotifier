@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace ClientNotifier.Data
@@ -102,7 +103,11 @@ namespace ClientNotifier.Data
             try
             {
                 var jsonContent = await File.ReadAllTextAsync(jsonFilePath);
-                var namedayData = JsonSerializer.Deserialize<NamedayJsonRoot>(jsonContent);
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                var namedayData = JsonSerializer.Deserialize<NamedayJsonRoot>(jsonContent, options);
                 
                 if (namedayData?.Namedays == null)
                 {
@@ -183,13 +188,19 @@ namespace ClientNotifier.Data
 
         private class NamedayJsonRoot
         {
+            [JsonPropertyName("namedays")]
             public List<NamedayJsonItem> Namedays { get; set; } = new();
         }
 
         private class NamedayJsonItem
         {
+            [JsonPropertyName("name")]
             public string Name { get; set; } = string.Empty;
+            
+            [JsonPropertyName("month")]
             public int Month { get; set; }
+            
+            [JsonPropertyName("day")]
             public int Day { get; set; }
         }
     }
