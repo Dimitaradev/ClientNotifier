@@ -15,10 +15,26 @@ builder.Services.AddDbContext<NotifierContext>(options =>
 // Register services
 builder.Services.AddScoped<DbInitializer>();
 
+// AutoMapper
+builder.Services.AddAutoMapper(typeof(ClientNotifier.Core.Mappings.AutoMapperProfile).Assembly);
+
+// Add CORS for development
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DevelopmentPolicy",
+        builder => builder
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader());
+});
+
 //controllers and swagger
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "ClientNotifier API", Version = "v1" });
+});
 
 var app = builder.Build();
 
@@ -78,8 +94,10 @@ if(app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseCors("DevelopmentPolicy");
 }
 
+app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
