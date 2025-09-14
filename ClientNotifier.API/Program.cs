@@ -1,3 +1,4 @@
+using ClientNotifier.Core.Services;
 using ClientNotifier.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +15,7 @@ builder.Services.AddDbContext<NotifierContext>(options =>
 
 // Register services
 builder.Services.AddScoped<DbInitializer>();
+builder.Services.AddScoped<ExcelImportService>();
 
 // AutoMapper
 builder.Services.AddAutoMapper(typeof(ClientNotifier.Core.Mappings.AutoMapperProfile).Assembly);
@@ -97,6 +99,8 @@ if(app.Environment.IsDevelopment())
     app.UseCors("DevelopmentPolicy");
 }
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();

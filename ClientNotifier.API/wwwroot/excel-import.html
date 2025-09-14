@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Импорт на клиенти от Excel</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .upload-section {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: border-color 0.3s;
+        }
+        .upload-section.dragover {
+            border-color: #4CAF50;
+            background-color: #f8f8f8;
+        }
+        .file-input {
+            display: none;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #2196F3;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #1976D2;
+        }
+        .btn-success {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #45a049;
+        }
+        .btn-secondary {
+            background-color: #757575;
+            color: white;
+        }
+        .options {
+            margin: 20px 0;
+            text-align: left;
+        }
+        .options label {
+            display: block;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+        .options input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+        .result-summary {
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .result-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .result-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        .result-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .error-list {
+            margin-top: 20px;
+        }
+        .error-item {
+            background-color: #f8f9fa;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid #dc3545;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .file-info {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-radius: 4px;
+            display: none;
+        }
+        .template-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f0f0f0;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗂️ Импорт на клиенти от Excel</h1>
+        
+        <div class="template-section">
+            <h3>📋 Първо изтеглете шаблона</h3>
+            <p>Използвайте този шаблон за правилно форматиране на данните:</p>
+            <button class="btn btn-secondary" onclick="downloadTemplate()">
+                ⬇️ Изтегли Excel шаблон
+            </button>
+        </div>
+
+        <div class="upload-section" id="uploadSection">
+            <h3>📤 Качете вашия Excel файл</h3>
+            <p>Плъзнете файла тук или кликнете за избор</p>
+            <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls">
+            <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                Избери файл
+            </button>
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <strong>Избран файл:</strong> <span id="fileName"></span><br>
+            <strong>Размер:</strong> <span id="fileSize"></span>
+        </div>
+
+        <div class="options">
+            <label>
+                <input type="checkbox" id="skipFirstRow" checked>
+                Пропусни първи ред (заглавия)
+            </label>
+            <label>
+                <input type="checkbox" id="updateExisting">
+                Обнови съществуващи записи (по ЕГН)
+            </label>
+        </div>
+
+        <button class="btn btn-success" id="importBtn" onclick="importFile()" style="display:none">
+            📥 Импортирай
+        </button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Обработване на файла...</p>
+        </div>
+
+        <div class="results" id="results">
+            <h3>📊 Резултати от импорта</h3>
+            <div id="resultSummary"></div>
+            <div id="errorList" class="error-list"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        const uploadSection = document.getElementById('uploadSection');
+        const fileInput = document.getElementById('fileInput');
+
+        // Drag and drop
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            if (!file.name.match(/\.(xlsx|xls)$/)) {
+                alert('Моля, изберете Excel файл (.xlsx или .xls)');
+                return;
+            }
+
+            selectedFile = file;
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            document.getElementById('fileInfo').style.display = 'block';
+            document.getElementById('importBtn').style.display = 'inline-block';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' bytes';
+            else if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
+            else return Math.round(bytes / 1048576) + ' MB';
+        }
+
+        async function downloadTemplate() {
+            try {
+                const response = await fetch('/api/import/template');
+                if (!response.ok) throw new Error('Failed to download template');
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'ClientImportTemplate.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                alert('Грешка при изтегляне на шаблона: ' + error.message);
+            }
+        }
+
+        async function importFile() {
+            if (!selectedFile) {
+                alert('Моля, изберете файл');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('skipFirstRow', document.getElementById('skipFirstRow').checked);
+            formData.append('updateExisting', document.getElementById('updateExisting').checked);
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('importBtn').disabled = true;
+            document.getElementById('results').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/import/excel', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                displayResults(result);
+            } catch (error) {
+                alert('Грешка при импортиране: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('importBtn').disabled = false;
+            }
+        }
+
+        function displayResults(result) {
+            const resultsDiv = document.getElementById('results');
+            const summaryDiv = document.getElementById('resultSummary');
+            const errorListDiv = document.getElementById('errorList');
+            
+            resultsDiv.style.display = 'block';
+            
+            // Determine overall status
+            let summaryClass = 'result-success';
+            if (result.failedImports > 0 && result.successfulImports === 0) {
+                summaryClass = 'result-error';
+            } else if (result.failedImports > 0) {
+                summaryClass = 'result-warning';
+            }
+            
+            summaryDiv.className = `result-summary ${summaryClass}`;
+            summaryDiv.innerHTML = `
+                <h4>Обобщение</h4>
+                <p><strong>Общо редове:</strong> ${result.totalRows}</p>
+                <p><strong>✅ Успешно импортирани:</strong> ${result.successfulImports}</p>
+                ${result.updatedRecords > 0 ? `<p><strong>🔄 Обновени записи:</strong> ${result.updatedRecords}</p>` : ''}
+                ${result.skippedDuplicates > 0 ? `<p><strong>⏭️ Пропуснати дубликати:</strong> ${result.skippedDuplicates}</p>` : ''}
+                ${result.failedImports > 0 ? `<p><strong>❌ Неуспешни:</strong> ${result.failedImports}</p>` : ''}
+                <p><strong>⏱️ Време за обработка:</strong> ${formatDuration(result.processingTime)}</p>
+            `;
+            
+            // Display errors
+            errorListDiv.innerHTML = '';
+            if (result.errors && result.errors.length > 0) {
+                errorListDiv.innerHTML = '<h4>Грешки при импортиране:</h4>';
+                result.errors.forEach(error => {
+                    const errorItem = document.createElement('div');
+                    errorItem.className = 'error-item';
+                    errorItem.innerHTML = `
+                        <strong>Ред ${error.rowNumber}:</strong> 
+                        ${error.firstName || ''} ${error.lastName || ''} 
+                        ${error.egn ? `(ЕГН: ${error.egn})` : ''}<br>
+                        <span style="color: #dc3545;">${error.errorMessage}</span>
+                    `;
+                    errorListDiv.appendChild(errorItem);
+                });
+            }
+
+            // Show success message if all imported
+            if (result.successfulImports > 0 && result.failedImports === 0) {
+                setTimeout(() => {
+                    if (confirm('Импортът завърши успешно! Искате ли да видите списъка с клиенти?')) {
+                        window.location.href = '/api/people';
+                    }
+                }, 1000);
+            }
+        }
+
+        function formatDuration(duration) {
+            if (!duration) return 'N/A';
+            const parts = duration.split(':');
+            if (parts.length >= 3) {
+                const totalSeconds = parseFloat(parts[2]);
+                return totalSeconds.toFixed(2) + ' секунди';
+            }
+            return duration;
+        }
+    </script>
+</body>
+</html>
