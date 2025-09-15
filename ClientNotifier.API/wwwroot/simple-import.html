@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Бърз импорт - Име и Рожден ден</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .info-box {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .input-section {
+            margin: 20px 0;
+        }
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn-primary {
+            background-color: #2196F3;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #1976D2;
+        }
+        .btn-secondary {
+            background-color: #757575;
+            color: white;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .preview-table th, .preview-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .preview-table th {
+            background-color: #f5f5f5;
+        }
+        .error-row {
+            background-color: #fee;
+        }
+        .format-examples {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .nav-buttons {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-buttons">
+            <a href="/" class="btn btn-secondary">← Начало</a>
+            <a href="/admin.html" class="btn btn-secondary">Администрация</a>
+        </div>
+
+        <h1>🎂 Бърз импорт - Име и Рожден ден</h1>
+        
+        <div class="info-box">
+            <strong>Инструкции:</strong>
+            <ul>
+                <li>Въведете или поставете данните в текстовото поле</li>
+                <li>Всеки ред = един човек</li>
+                <li>Формат: Име, Рожден ден</li>
+                <li>ЕГН ще бъде генерирано автоматично от рождената дата</li>
+            </ul>
+        </div>
+
+        <div class="format-examples">
+            <strong>Примерни формати за дата:</strong>
+            <pre>Иван Петров, 15.05.1980      (DD.MM.YYYY)
+Мария Иванова, 1/22/1990     (M/D/YYYY - американски)
+Георги, 23-04-1990           (DD-MM-YYYY)
+Петър Стоянов, 1987-06-10    (YYYY-MM-DD)
+Адрианана Кацарова, 1/22/1990
+Александър Димитров, 10/29/1957</pre>
+        </div>
+
+        <div class="input-section">
+            <h3>Въведете данните:</h3>
+            <textarea id="dataInput" placeholder="Адрианана Кацарова, 1/22/1990
+Александър Димитров, 10/29/1957
+Мария Иванова, 3/15/1985"></textarea>
+        </div>
+
+        <button class="btn btn-primary" onclick="previewData()">👁️ Преглед</button>
+        <button class="btn btn-primary" onclick="importData()" id="importBtn" style="display:none">📥 Импортирай</button>
+        <button class="btn btn-secondary" onclick="clearData()">🗑️ Изчисти</button>
+
+        <div id="preview" style="display:none">
+            <h3>Преглед на данните:</h3>
+            <div id="previewContent"></div>
+        </div>
+
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        let parsedData = [];
+
+        function parseDate(dateStr) {
+            // Remove spaces and normalize
+            dateStr = dateStr.trim();
+            
+            // Try different date formats
+            const formats = [
+                // M/D/YYYY or MM/DD/YYYY (American format)
+                { regex: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, type: 'american' },
+                // DD.MM.YYYY
+                { regex: /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/, type: 'european' },
+                // DD-MM-YYYY
+                { regex: /^(\d{1,2})-(\d{1,2})-(\d{4})$/, type: 'european' },
+                // YYYY-MM-DD
+                { regex: /^(\d{4})-(\d{1,2})-(\d{1,2})$/, type: 'iso' },
+            ];
+
+            for (let format of formats) {
+                const match = dateStr.match(format.regex);
+                if (match) {
+                    let day, month, year;
+                    
+                    if (format.type === 'iso') {
+                        // YYYY-MM-DD format
+                        year = parseInt(match[1]);
+                        month = parseInt(match[2]);
+                        day = parseInt(match[3]);
+                    } else if (format.type === 'american') {
+                        // M/D/YYYY format (month first)
+                        month = parseInt(match[1]);
+                        day = parseInt(match[2]);
+                        year = parseInt(match[3]);
+                    } else {
+                        // DD.MM.YYYY or DD-MM-YYYY format (day first)
+                        day = parseInt(match[1]);
+                        month = parseInt(match[2]);
+                        year = parseInt(match[3]);
+                    }
+                    
+                    // Validate date
+                    const currentYear = new Date().getFullYear();
+                    if (month >= 1 && month <= 12 && day >= 1 && day <= 31 && year >= 1900 && year <= currentYear) {
+                        // Additional validation for days in month
+                        const daysInMonth = new Date(year, month, 0).getDate();
+                        if (day <= daysInMonth) {
+                            return { day, month, year, isValid: true };
+                        }
+                    }
+                }
+            }
+            
+            return { isValid: false };
+        }
+
+        function generateEGN(day, month, year, index) {
+            // Format: YYMMDD + region code + gender + checksum
+            let yy = year % 100;
+            let mm = month;
+            
+            // Handle century encoding
+            if (year >= 2000) {
+                mm += 40;
+            } else if (year < 1900) {
+                mm += 20;
+            }
+            
+            // Pad with zeros
+            const yyStr = yy.toString().padStart(2, '0');
+            const mmStr = mm.toString().padStart(2, '0');
+            const ddStr = day.toString().padStart(2, '0');
+            
+            // Generate a sequential code for region/gender (odd for female, even for male)
+            // Using index to ensure uniqueness
+            const regionGenderCode = (300 + index * 2).toString().padStart(3, '0');
+            
+            // Calculate checksum
+            const egnWithoutChecksum = yyStr + mmStr + ddStr + regionGenderCode;
+            const weights = [2, 4, 8, 5, 10, 9, 7, 3, 6];
+            let sum = 0;
+            
+            for (let i = 0; i < 9; i++) {
+                sum += parseInt(egnWithoutChecksum[i]) * weights[i];
+            }
+            
+            let checksum = sum % 11;
+            if (checksum === 10) checksum = 0;
+            
+            return egnWithoutChecksum + checksum;
+        }
+
+        function previewData() {
+            const input = document.getElementById('dataInput').value;
+            if (!input.trim()) {
+                alert('Моля, въведете данни');
+                return;
+            }
+
+            parsedData = [];
+            const lines = input.split('\n');
+            let validCount = 0;
+            let errorCount = 0;
+
+            lines.forEach((line, index) => {
+                if (!line.trim()) return;
+
+                const parts = line.split(',');
+                if (parts.length !== 2) {
+                    parsedData.push({
+                        error: true,
+                        message: 'Невалиден формат - използвайте: Име, Дата',
+                        original: line
+                    });
+                    errorCount++;
+                    return;
+                }
+
+                const name = parts[0].trim();
+                const dateStr = parts[1].trim();
+                const dateInfo = parseDate(dateStr);
+
+                if (!name) {
+                    parsedData.push({
+                        error: true,
+                        message: 'Липсва име',
+                        original: line
+                    });
+                    errorCount++;
+                    return;
+                }
+
+                if (!dateInfo.isValid) {
+                    parsedData.push({
+                        error: true,
+                        message: 'Невалидна дата',
+                        original: line,
+                        name: name
+                    });
+                    errorCount++;
+                    return;
+                }
+
+                // Generate EGN
+                const egn = generateEGN(dateInfo.day, dateInfo.month, dateInfo.year, validCount);
+                
+                // Split name into first and last name
+                const nameParts = name.split(' ');
+                const firstName = nameParts[0];
+                const lastName = nameParts.slice(1).join(' ');
+
+                parsedData.push({
+                    firstName: firstName,
+                    lastName: lastName,
+                    fullName: name,
+                    birthday: `${dateInfo.year}-${dateInfo.month.toString().padStart(2, '0')}-${dateInfo.day.toString().padStart(2, '0')}`,
+                    egn: egn,
+                    error: false
+                });
+                validCount++;
+            });
+
+            // Show preview
+            showPreview(parsedData, validCount, errorCount);
+        }
+
+        function showPreview(data, validCount, errorCount) {
+            const previewDiv = document.getElementById('preview');
+            const previewContent = document.getElementById('previewContent');
+            
+            let html = `<p>Валидни записи: <strong>${validCount}</strong>, Грешки: <strong>${errorCount}</strong></p>`;
+            
+            if (data.length > 0) {
+                html += '<table class="preview-table"><thead><tr><th>Име</th><th>Рожден ден</th><th>Генерирано ЕГН</th><th>Статус</th></tr></thead><tbody>';
+                
+                data.forEach(item => {
+                    if (item.error) {
+                        html += `<tr class="error-row">
+                            <td>${item.name || item.original}</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td style="color: red">${item.message}</td>
+                        </tr>`;
+                    } else {
+                        html += `<tr>
+                            <td>${item.fullName}</td>
+                            <td>${new Date(item.birthday).toLocaleDateString('bg-BG')}</td>
+                            <td>${item.egn}</td>
+                            <td style="color: green">✓ OK</td>
+                        </tr>`;
+                    }
+                });
+                
+                html += '</tbody></table>';
+            }
+            
+            previewContent.innerHTML = html;
+            previewDiv.style.display = 'block';
+            
+            if (validCount > 0) {
+                document.getElementById('importBtn').style.display = 'inline-block';
+            }
+        }
+
+        async function importData() {
+            const validData = parsedData.filter(d => !d.error);
+            if (validData.length === 0) {
+                alert('Няма валидни данни за импорт');
+                return;
+            }
+
+            document.getElementById('importBtn').disabled = true;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.className = 'results';
+            resultsDiv.innerHTML = 'Импортиране...';
+            resultsDiv.style.display = 'block';
+
+            let successCount = 0;
+            let errorCount = 0;
+            let errors = [];
+
+            for (const person of validData) {
+                try {
+                    const response = await fetch('/api/people', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            firstName: person.firstName,
+                            lastName: person.lastName,
+                            egn: person.egn,
+                            notificationsEnabled: true
+                        })
+                    });
+
+                    if (response.ok) {
+                        successCount++;
+                    } else {
+                        const error = await response.text();
+                        errorCount++;
+                        errors.push(`${person.fullName}: ${error}`);
+                    }
+                } catch (error) {
+                    errorCount++;
+                    errors.push(`${person.fullName}: ${error.message}`);
+                }
+            }
+
+            // Show results
+            resultsDiv.className = 'results ' + (errorCount === 0 ? 'success' : 'error');
+            let resultHtml = `<h3>Резултати от импорта</h3>
+                <p>✅ Успешно импортирани: <strong>${successCount}</strong></p>`;
+            
+            if (errorCount > 0) {
+                resultHtml += `<p>❌ Грешки: <strong>${errorCount}</strong></p>`;
+                resultHtml += '<ul>';
+                errors.forEach(err => {
+                    resultHtml += `<li>${err}</li>`;
+                });
+                resultHtml += '</ul>';
+            }
+            
+            resultsDiv.innerHTML = resultHtml;
+            
+            if (successCount > 0 && errorCount === 0) {
+                setTimeout(() => {
+                    if (confirm('Импортът завърши успешно! Искате ли да видите клиентите?')) {
+                        window.location.href = '/admin.html#people';
+                    }
+                }, 1000);
+            }
+            
+            document.getElementById('importBtn').disabled = false;
+        }
+
+        function clearData() {
+            document.getElementById('dataInput').value = '';
+            document.getElementById('preview').style.display = 'none';
+            document.getElementById('importBtn').style.display = 'none';
+            document.getElementById('results').style.display = 'none';
+            parsedData = [];
+        }
+
+        // Allow tab in textarea
+        document.getElementById('dataInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                this.value = this.value.substring(0, start) + '\t' + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 1;
+            }
+        });
+    </script>
+</body>
+</html>

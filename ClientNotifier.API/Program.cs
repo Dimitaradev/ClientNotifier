@@ -1,4 +1,4 @@
-using ClientNotifier.Core.Services;
+using ClientNotifier.API.Services;
 using ClientNotifier.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,7 +15,8 @@ builder.Services.AddDbContext<NotifierContext>(options =>
 
 // Register services
 builder.Services.AddScoped<DbInitializer>();
-builder.Services.AddScoped<ExcelImportService>();
+builder.Services.AddScoped<ClientNotifier.Core.Services.ExcelImportService>();
+builder.Services.AddScoped<EmailService>();
 
 // AutoMapper
 builder.Services.AddAutoMapper(typeof(ClientNotifier.Core.Mappings.AutoMapperProfile).Assembly);
