@@ -9,6 +9,7 @@ public class NotifierContext : DbContext
 
     public DbSet<People> People { get; set; }
     public DbSet<NamedayMapping> NamedayMappings { get; set; }
+    public DbSet<NotificationLog> NotificationLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +45,12 @@ public class NotifierContext : DbContext
                 
             // Remove the DateTime Nameday property from database
             entity.Ignore(n => n.DateDisplay);
+        });
+
+        // NotificationLog configuration
+        modelBuilder.Entity<NotificationLog>(entity =>
+        {
+            entity.HasIndex(n => new { n.PersonId, n.Type, n.Channel, n.SentAtUtc });
         });
     }
     
